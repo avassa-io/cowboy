@@ -70,6 +70,7 @@
 -export([resp_header/2]).
 -export([resp_header/3]).
 -export([resp_headers/1]).
+-export([resp_status/1]).
 -export([set_resp_header/3]).
 -export([set_resp_headers/2]).
 -export([has_resp_header/2]).
@@ -152,6 +153,7 @@
 	multipart => {binary(), binary()} | done,
 
 	has_sent_resp => headers | true,
+	resp_status => cowboy:http_status(),
 	resp_cookies => #{iodata() => iodata()},
 	resp_headers => #{binary() => iodata()},
 	resp_body => resp_body(),
@@ -823,6 +825,12 @@ resp_header(Name, #{resp_headers := Headers}, Default) ->
 resp_header(_, #{}, Default) ->
 	Default.
 
+-spec resp_status(req()) -> cowboy:http_status() | undefined.
+resp_status(#{resp_status := Status}) ->
+	Status;
+resp_status(#{}) ->
+	undefined.
+
 -spec resp_headers(req()) -> cowboy:http_headers().
 resp_headers(#{resp_headers := RespHeaders}) ->
 	RespHeaders;
@@ -928,13 +936,14 @@ do_reply_ensure_no_body(Status, Headers, Body, Req) ->
 %% data around if we can avoid it.
 do_reply(Status, Headers, _, Req=#{method := <<"HEAD">>}) ->
 	cast({response, Status, response_headers(Headers, Req), <<>>}, Req),
-	done_replying(Req, true);
+	done_replying(Req, Status, true);
 do_reply(Status, Headers, Body, Req) ->
 	cast({response, Status, response_headers(Headers, Req), Body}, Req),
-	done_replying(Req, true).
+	done_replying(Req, Status, true).
 
-done_replying(Req, HasSentResp) ->
-	maps:without([resp_cookies, resp_headers, resp_body], Req#{has_sent_resp => HasSentResp}).
+done_replying(Req, Status, HasSentResp) ->
+	maps:without([resp_cookies, resp_headers, resp_body],
+		Req#{has_sent_resp => HasSentResp, resp_status => Status}).
 
 -spec stream_reply(cowboy:http_status(), Req) -> Req when Req::req().
 stream_reply(Status, Req) ->
@@ -960,7 +969,7 @@ stream_reply(Status = <<"304",_/bits>>, Headers=#{}, Req) ->
 	reply(Status, Headers, <<>>, Req);
 stream_reply(Status, Headers=#{}, Req) when is_integer(Status); is_binary(Status) ->
 	cast({headers, Status, response_headers(Headers, Req)}, Req),
-	done_replying(Req, headers).
+	done_replying(Req, Status, headers).
 
 -spec stream_body(resp_body(), fin | nofin, req()) -> ok.
 %% Error out if headers were not sent.

@@ -1,0 +1,54 @@
+= cowboy_req:resp_status(3)
+
+== Name
+
+cowboy_req:resp_status - Response status code
+
+== Description
+
+[source,erlang]
+----
+resp_status(Req :: cowboy_req:req())
+    -> cowboy:http_status() | undefined
+----
+
+Return the status code of the response that was sent.
+
+The status code is only available in the Req object
+returned by the function that sent the response, for
+example link:man:cowboy_req:reply(3)[cowboy_req:reply(3)]
+or link:man:cowboy_req:stream_reply(3)[cowboy_req:stream_reply(3)].
+This allows the handler to know which status code was sent
+in callbacks such as `terminate/3`, for example for logging.
+
+== Arguments
+
+Req::
+
+The Req object.
+
+== Return value
+
+The status code exactly as it was given when sending the
+response, or `undefined` if no response was sent using
+this Req object.
+
+== Changelog
+
+* *2.20*: Function introduced.
+
+== Examples
+
+.Log the status code of the response in terminate/3
+[source,erlang]
+----
+terminate(_Reason, Req, _State) ->
+    logger:info("~s ~s ~p", [cowboy_req:method(Req),
+        cowboy_req:path(Req), cowboy_req:resp_status(Req)]).
+----
+
+== See also
+
+link:man:cowboy_req(3)[cowboy_req(3)],
+link:man:cowboy_req:reply(3)[cowboy_req:reply(3)],
+link:man:cowboy_req:stream_reply(3)[cowboy_req:stream_reply(3)]

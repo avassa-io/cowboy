@@ -957,6 +957,26 @@ resp_headers(Config) ->
 	{200, _, <<"OK">>} = do_get("/resp/resp_headers_empty", Config),
 	ok.
 
+resp_status(Config) ->
+	doc("Get the status code of the response that was sent."),
+	Headers = [{<<"x-test-pid">>, pid_to_list(self())}],
+	{201, _, <<"OK">>} = do_get("/resp/resp_status/reply", Headers, Config),
+	{resp_status, 201} = receive_resp_status(),
+	{202, _, <<"OK">>} = do_get("/resp/resp_status/stream_reply", Headers, Config),
+	{resp_status, 202} = receive_resp_status(),
+	{204, _, <<>>} = do_get("/resp/resp_status/stream_reply_204", Headers, Config),
+	{resp_status, 204} = receive_resp_status(),
+	{200, _, <<"OK">>} = do_get("/resp/resp_status/binary", Headers, Config),
+	{resp_status, <<"200 GOOD">>} = receive_resp_status(),
+	ok.
+
+receive_resp_status() ->
+	receive
+		{resp_status, _} = Msg -> Msg
+	after 1000 ->
+		error(timeout)
+	end.
+
 set_resp_body(Config) ->
 	doc("Response using set_resp_body."),
 	{200, _, <<"OK">>} = do_get("/resp/set_resp_body", Config),
